@@ -1,0 +1,42 @@
+interface LogoProps {
+  size?: number;
+  className?: string;
+  gradientId?: string;
+}
+
+/** Símbolo oficial do UNSAY, fornecido pelo time de produto. */
+export function Logo({ size = 24, className, gradientId = "unsay-mark" }: LogoProps) {
+  const pinkId = `${gradientId}-pink`;
+  const coreId = `${gradientId}-core`;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 512 512"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={pinkId} x1="150" y1="120" x2="375" y2="395" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#8B6BFF" />
+          <stop offset="55%" stopColor="#C767E8" />
+          <stop offset="100%" stopColor="#F0529C" />
+        </linearGradient>
+        <linearGradient id={coreId} x1="160" y1="120" x2="290" y2="340" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#8B6BFF" />
+          <stop offset="100%" stopColor="#8B2CF5" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M260 106 C257 105 255 108 255 115 L255 158 C255 173 263 183 278 194 C300 210 329 221 354 236 C374 248 378 261 369 273 C359 286 337 294 319 304 C298 315 283 333 274 353 C268 367 263 383 259 397 C257 404 254 404 252 397 C246 375 236 354 221 338 C205 321 195 307 199 290 C203 274 217 262 231 250 C249 235 255 218 255 198 L255 115 C255 108 257 105 260 106 Z"
+        fill={`url(#${pinkId})`}
+      />
+      <path
+        d="M255 106 C247 107 237 120 229 133 C220 148 216 165 208 181 C196 204 179 220 155 233 C136 243 121 249 116 259 C110 270 117 281 131 290 C150 302 172 312 193 323 C210 332 225 341 238 352 C227 338 216 325 205 311 C194 296 196 280 204 266 C211 254 221 245 232 236 C247 224 255 208 255 190 Z"
+        fill={`url(#${coreId})`}
+      />
+    </svg>
+  );
+}

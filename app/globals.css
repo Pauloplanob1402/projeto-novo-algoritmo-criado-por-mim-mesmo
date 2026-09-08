@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0812;
+  --bg-1: #110d1c;
+  --card: #1d1730;
+  --card-hi: #241c3b;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-hi: rgba(255, 255, 255, 0.16);
+  --text: #f4f1fc;
+  --text-dim: #ada3c9;
+  --text-faint: #6c6389;
+  --violet: #8b6bff;
+  --pink: #f0529c;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-1: var(--bg-1);
+  --color-card: var(--card);
+  --color-card-hi: var(--card-hi);
+  --color-border: var(--border);
+  --color-border-hi: var(--border-hi);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-text-faint: var(--text-faint);
+  --color-violet: var(--violet);
+  --color-pink: var(--pink);
+  --font-serif: "Fraunces", serif;
+  --font-sans: "Manrope", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(ellipse 120% 80% at 50% -10%, #201638 0%, var(--bg) 55%);
+  color: var(--text);
+  font-family: "Manrope", sans-serif;
+  min-height: 100vh;
+}
+
+.unsay-gradient {
+  background: linear-gradient(120deg, #8b6bff 0%, #c767e8 55%, #f0529c 100%);
+}
+
+.unsay-gradient-text {
+  background: linear-gradient(120deg, #8b6bff 0%, #c767e8 55%, #f0529c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.unsay-gradient-soft {
+  background: linear-gradient(120deg, rgba(139, 107, 255, 0.2), rgba(240, 82, 156, 0.2));
+}
+
+@keyframes fillDot {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+::selection {
+  background: var(--violet);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
