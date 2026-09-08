@@ -20,7 +20,7 @@ export function UnsayExperience() {
   const showProgress = flow.screen === "question";
 
   return (
-    <div className="w-full max-w-[460px] min-h-screen sm:min-h-0 sm:max-h-[900px] sm:h-[calc(100vh-64px)] bg-bg relative flex flex-col overflow-hidden sm:rounded-[36px] sm:border sm:border-border sm:shadow-[0_0_80px_rgba(139,107,255,0.18),0_40px_100px_rgba(0,0,0,0.55)]">
+    <div className="w-full max-w-[460px] min-h-dvh sm:min-h-0 sm:max-h-[900px] sm:h-[calc(100vh-64px)] bg-bg relative flex flex-col overflow-hidden sm:rounded-[36px] sm:border sm:border-border sm:shadow-[0_0_80px_rgba(139,107,255,0.18),0_40px_100px_rgba(0,0,0,0.55)]">
       <Header
         visible={headerVisible}
         profileEnabled={headerVisible}
@@ -29,7 +29,7 @@ export function UnsayExperience() {
 
       {showProgress && <ProgressIndicator answeredCount={flow.answeredCount} />}
 
-      <div className="relative flex-1 flex px-[26px] pb-[30px]">
+      <div className="relative flex-1 flex px-[26px] pb-[calc(30px+env(safe-area-inset-bottom))]">
         {flow.screen === "intro" && <IntroScreen onStart={flow.start} />}
 
         {flow.screen === "question" && flow.currentQuestion && (

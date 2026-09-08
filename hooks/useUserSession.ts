@@ -40,51 +40,52 @@ export function useUserSession(): UserSessionState {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
-
     let cancelled = false;
 
-    function applySession(session: { access_token: string; user: { id: string; is_anonymous?: boolean; email?: string } } | null) {
-      if (cancelled) return;
-      if (!session) {
-        setState({ ...EMPTY_SESSION, ready: true });
-        return;
-      }
-      setState({
-        ready: true,
-        userId: session.user.id,
-        accessToken: session.access_token,
-        isAnonymous: Boolean(session.user.is_anonymous),
-        email: session.user.email ?? null,
-      });
-    }
-
     async function bootstrap() {
-      const { data: existing } = await supabase!.auth.getSession();
+      const supabase = await getSupabaseBrowserClient();
+      if (!supabase || cancelled) return;
+
+      function applySession(session: { access_token: string; user: { id: string; is_anonymous?: boolean; email?: string } } | null) {
+        if (cancelled) return;
+        if (!session) {
+          setState({ ...EMPTY_SESSION, ready: true });
+          return;
+        }
+        setState({
+          ready: true,
+          userId: session.user.id,
+          accessToken: session.access_token,
+          isAnonymous: Boolean(session.user.is_anonymous),
+          email: session.user.email ?? null,
+        });
+      }
+
+      const { data: existing } = await supabase.auth.getSession();
       if (existing.session) {
         applySession(existing.session);
-        return;
+      } else {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) {
+          console.error("Não foi possível iniciar sessão anônima no Supabase:", error.message);
+          if (!cancelled) setState({ ...EMPTY_SESSION, ready: true });
+        } else {
+          applySession(data.session);
+        }
       }
 
-      const { data, error } = await supabase!.auth.signInAnonymously();
-      if (error) {
-        console.error("Não foi possível iniciar sessão anônima no Supabase:", error.message);
-        if (!cancelled) setState({ ...EMPTY_SESSION, ready: true });
-        return;
-      }
-      applySession(data.session);
+      const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+        applySession(session);
+      });
+
+      return subscription.subscription;
     }
 
-    bootstrap();
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      applySession(session);
-    });
+    const subscriptionPromise = bootstrap();
 
     return () => {
       cancelled = true;
-      subscription.subscription.unsubscribe();
+      subscriptionPromise.then((sub) => sub?.unsubscribe());
     };
   }, []);
 

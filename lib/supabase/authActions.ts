@@ -14,7 +14,7 @@ function redirectUrl(): string {
  * normal.
  */
 export async function signInWithGoogle() {
-  const supabase = getSupabaseBrowserClient();
+  const supabase = await getSupabaseBrowserClient();
   if (!supabase) return { error: "supabase_not_configured" as const };
 
   const { data: session } = await supabase.auth.getSession();
@@ -40,7 +40,7 @@ export async function signInWithGoogle() {
  * no link recebido.
  */
 export async function sendMagicLink(email: string) {
-  const supabase = getSupabaseBrowserClient();
+  const supabase = await getSupabaseBrowserClient();
   if (!supabase) return { error: "supabase_not_configured" as const };
 
   const { data: session } = await supabase.auth.getSession();
@@ -63,7 +63,7 @@ export async function sendMagicLink(email: string) {
  * vistas, perfil, etc.) seja reiniciado junto com uma nova sessão anônima.
  */
 export async function signOutAndReset() {
-  const supabase = getSupabaseBrowserClient();
+  const supabase = await getSupabaseBrowserClient();
   if (!supabase) return;
   await supabase.auth.signOut();
   if (typeof window !== "undefined") window.location.reload();

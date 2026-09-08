@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QUESTIONS } from "@/data/questions";
-import { pickNextQuestion } from "@/lib/algorithm";
+import { pickNextQuestion, type QuestionStatsMap } from "@/lib/algorithm";
 import { generateInsight, INSIGHT_MILESTONES } from "@/lib/insights";
 import {
   DIMENSION_LABELS,
@@ -12,7 +12,7 @@ import {
   type Contradiction,
 } from "@/lib/profile";
 import { seededPercent } from "@/lib/stats";
-import { createShareRemote, persistInsightRemote, submitAnswerRemote } from "@/lib/supabase/api";
+import { createShareRemote, fetchQuestionStats, persistInsightRemote, submitAnswerRemote } from "@/lib/supabase/api";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useUserSession } from "@/hooks/useUserSession";
 import type { AnsweredQuestion, Category, Question, UserProfile } from "@/types/question";
@@ -61,12 +61,29 @@ export function useUnsayFlow() {
   const signupShown = useRef<boolean>(false);
   const pendingShareQuestion = useRef<Question | null>(null);
   const pendingContradiction = useRef<Contradiction | null>(null);
+  const questionStats = useRef<QuestionStatsMap>(new Map());
+
+  // Carrega as estatísticas reais de uso uma vez por sessão — o algoritmo
+  // de seleção passa a considerar performance histórica (Etapa 4) assim
+  // que os dados chegam; antes disso, opera de forma neutra (ver
+  // lib/algorithm.ts).
+  useEffect(() => {
+    if (!persistenceEnabled) return;
+    let cancelled = false;
+    fetchQuestionStats().then((stats) => {
+      if (!cancelled) questionStats.current = stats;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [persistenceEnabled]);
 
   const goToNextQuestion = useCallback(() => {
     const question = pickNextQuestion({
       pool: QUESTIONS,
       seenIds: seenIds.current,
       recentCategories: recentCategories.current,
+      stats: questionStats.current,
     });
     setCurrentQuestion(question);
     setScreen("question");

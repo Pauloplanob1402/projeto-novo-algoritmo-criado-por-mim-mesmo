@@ -12,7 +12,7 @@ export function IntroScreen({ onStart }: IntroScreenProps) {
       </div>
 
       <h1 className="font-serif font-normal text-[clamp(30px,8.2vw,40px)] leading-[1.18] tracking-tight mb-[18px] max-w-[320px]">
-        Você <em className="not-italic font-semibold unsay-gradient-text italic">não</em> sabe tudo sobre
+        Você <em className="font-semibold italic unsay-gradient-text">não</em> sabe tudo sobre
         você.
       </h1>
       <p className="text-text-dim text-[15.5px] leading-[1.55] max-w-[280px] mb-[42px]">

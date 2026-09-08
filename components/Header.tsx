@@ -10,7 +10,7 @@ interface HeaderProps {
 
 export function Header({ visible, onOpenProfile, profileEnabled }: HeaderProps) {
   return (
-    <div className="flex items-center justify-between px-[22px] pt-[22px] shrink-0">
+    <div className="flex items-center justify-between px-[22px] pt-[calc(22px+env(safe-area-inset-top))] shrink-0">
       <div
         className="flex items-center gap-2 font-serif font-semibold text-[15px] tracking-wide transition-opacity duration-300"
         style={{ opacity: visible ? 1 : 0 }}

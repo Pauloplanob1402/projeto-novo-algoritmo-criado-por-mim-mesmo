@@ -1,8 +1,8 @@
-# UNSAY — Etapas 1, 2 e 3
+# UNSAY — Etapas 1, 2, 3 e 4
 
-**Etapa 1 (Experiência & Frontend)**, **Etapa 2 (Supabase)** e **Etapa 3
-(Autenticação)** concluídas. Next.js 16 (App Router) + TypeScript +
-Tailwind CSS v4 + Supabase Auth.
+**Etapa 1 (Experiência & Frontend)**, **Etapa 2 (Supabase)**, **Etapa 3
+(Autenticação)** e **Etapa 4 (Algoritmo)** concluídas. Next.js 16 (App
+Router) + TypeScript + Tailwind CSS v4 + Supabase Auth.
 
 Ainda **sem Gemini** (Etapa 5) — os insights continuam gerados por
 template local, só que agora já persistidos no banco.
@@ -95,6 +95,7 @@ app/
     answers/route.ts       # grava resposta + atualiza perfil + percentual real
     insights/route.ts       # persiste um insight (texto ainda gerado localmente)
     shares/route.ts          # cria o registro de compartilhamento (slug)
+    questions/stats/route.ts  # estatísticas agregadas por pergunta (Etapa 4), público
 
 types/question.ts, data/questions.ts   # domínio e as 100 perguntas seedadas
 
@@ -102,9 +103,10 @@ lib/
   algorithm.ts, profile.ts, insights.ts, stats.ts, labels.ts
   supabase/
     config.ts               # detecta se o Supabase está configurado
-    browserClient.ts          # client do navegador (sessão anônima)
-    serverClient.ts             # client server-side, autenticado com o token do usuário
-    api.ts                        # helpers fetch (com fallback null em caso de falha)
+    browserClient.ts          # client do navegador — import() dinâmico (code-splitting)
+    serverClient.ts             # clients server-side (autenticado e anônimo)
+    authActions.ts                # login Google/e-mail, logout
+    api.ts                          # helpers fetch (com fallback null em caso de falha)
 
 hooks/
   useUserSession.ts             # sessão (anônima ou logada) + escuta onAuthStateChange
@@ -130,9 +132,55 @@ scripts/seed-questions.ts             # popula as 100 perguntas (idempotente)
 | Geração do texto do insight | Ainda por template local — vira Gemini na Etapa 5 (a tabela `insights` já existe e já persiste) |
 | Login com Google e e-mail (magic link) | **Real** — via Supabase Auth, convertendo a sessão anônima existente |
 | Logout | **Real** — sempre acessível no painel de perfil |
+| Algoritmo de próxima pergunta | **Real** — combina os atributos autorais das perguntas com uso real (taxa de compartilhamento observada + bônus de exploração para perguntas pouco vistas) |
+
+## Etapa 4 — Algoritmo aprendendo com uso real
+
+`lib/algorithm.ts` agora aceita um mapa de estatísticas (`QuestionStatsMap`)
+vindo de `get_question_stats()` (nova função SQL em
+`supabase/migrations/0002_question_stats.sql`): quantas vezes cada
+pergunta foi respondida e compartilhada. Isso entra como um componente a
+mais na pontuação (`performance`, peso 0.12):
+
+- perguntas com **alta taxa de compartilhamento real** ganham prioridade
+  (o que a galera de fato manda pra frente, não só o que os metadados
+  autorais *acham* que é compartilhável);
+- perguntas **pouco respondidas** recebem um bônus de exploração, pra o
+  banco inteiro de 100 perguntas continuar circulando em vez de
+  convergir sempre pras mesmas favoritas.
+
+`/api/questions/stats` expõe esse agregado publicamente (sem
+autenticação — são só contagens, nada individual), com cache de 1 minuto.
+Sem essa rota respondendo (Supabase não configurado, ou API fora do ar), o
+algoritmo simplesmente opera no modo neutro da Etapa 1, sem quebrar nada.
+
+## Performance & mobile
+
+Passada dedicada de leveza e responsividade, sem introduzir nada novo em
+termos de produto:
+
+- **Fontes**: trocadas de fonte variável (que baixa o eixo inteiro de peso
+  + tamanho óptico) para **5 instâncias estáticas exatas** — só os pesos
+  que a interface de fato usa (`ital,wght@0,400;0,500;0,600;1,300;1,600`
+  pro Fraunces), reduzindo bastante o payload de fontes.
+- **Code-splitting do Supabase**: `@supabase/supabase-js` (a dependência
+  mais pesada do projeto) foi convertida pra `import()` dinâmico em
+  `lib/supabase/browserClient.ts`. Confirmado no build: os chunks que
+  contêm essa biblioteca **não** aparecem entre os arquivos carregados
+  eagerly na home (`build-manifest.json` → `rootMainFiles`) — só entram
+  quando alguma ação de sessão realmente precisa.
+- **Viewport mobile correto**: `viewportFit: "cover"` + `env(safe-area-inset-*)`
+  no header e na área de conteúdo, pra não ficar por baixo do notch/home
+  indicator em iPhones. `theme-color` definido pra combinar a barra do
+  navegador com o app.
+- **Altura dinâmica**: `min-h-dvh` em vez de `min-h-screen` — evita o
+  clássico bug de conteúdo escondido atrás da barra de endereço em
+  navegadores mobile.
+- Tap targets de todos os botões ≥ 48px de altura, tipografia com
+  `clamp()` pra escalar suavemente de celulares pequenos a desktop.
 
 ## Próxima etapa
 
-Etapa 4 — Algoritmo: ligar `lib/algorithm.ts` a estatísticas reais de uso
-(performance histórica por pergunta, taxa de resposta, taxa de
-compartilhamento), em vez dos pesos fixos atuais.
+Etapa 5 — Gemini: endpoint `/api/ai/insight` server-side, chave só no
+servidor, geração real de insights/contradições, com cache e fallback
+quando o Gemini estiver indisponível.

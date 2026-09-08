@@ -17,3 +17,13 @@ export function getSupabaseServerClient(accessToken: string) {
     },
   });
 }
+
+/**
+ * Cliente server-side sem usuário — para dados públicos/agregados que não
+ * dependem de RLS por usuário (ex.: estatísticas de perguntas).
+ */
+export function getSupabaseAnonClient() {
+  return createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+    auth: { persistSession: false },
+  });
+}
