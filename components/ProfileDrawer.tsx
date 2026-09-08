@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AccountActions } from "@/components/AccountActions";
 import { DIMENSION_LABELS } from "@/lib/profile";
+import { signOutAndReset } from "@/lib/supabase/authActions";
 import type { ProfileDimension, UserProfile } from "@/types/question";
 
 const DIMENSION_ORDER: ProfileDimension[] = [
@@ -17,10 +19,19 @@ interface ProfileDrawerProps {
   open: boolean;
   profile: UserProfile;
   answeredCount: number;
+  isAnonymous: boolean;
+  email: string | null;
   onClose: () => void;
 }
 
-export function ProfileDrawer({ open, profile, answeredCount, onClose }: ProfileDrawerProps) {
+export function ProfileDrawer({
+  open,
+  profile,
+  answeredCount,
+  isAnonymous,
+  email,
+  onClose,
+}: ProfileDrawerProps) {
   return (
     <>
       <div
@@ -50,7 +61,31 @@ export function ProfileDrawer({ open, profile, answeredCount, onClose }: Profile
           <DimensionRow key={dim} label={DIMENSION_LABELS[dim]} value={Math.round(profile[dim])} open={open} />
         ))}
 
-        <div className="mt-[30px] pt-5 border-t border-border text-[12.5px] text-text-faint leading-[1.6]">
+        <div className="mt-[30px] pt-5 border-t border-border">
+          {isAnonymous ? (
+            <>
+              <div className="text-text-dim text-[13.5px] font-semibold mb-3.5">
+                Sessão anônima — crie uma conta para não perder essas descobertas.
+              </div>
+              <AccountActions variant="ghost" />
+            </>
+          ) : (
+            <>
+              <div className="text-text-dim text-[13.5px] font-semibold mb-3.5">
+                Conectado como <span className="text-text">{email}</span>
+              </div>
+              <button
+                type="button"
+                onClick={signOutAndReset}
+                className="border border-border-hi text-text-faint font-bold text-[13.5px] tracking-wide rounded-full py-3 px-5 w-full"
+              >
+                Sair
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="mt-5 pt-5 border-t border-border text-[12.5px] text-text-faint leading-[1.6]">
           Isso é um retrato provisório, não um diagnóstico. Ele muda conforme você responde mais
           perguntas.
         </div>

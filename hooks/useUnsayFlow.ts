@@ -14,7 +14,7 @@ import {
 import { seededPercent } from "@/lib/stats";
 import { createShareRemote, persistInsightRemote, submitAnswerRemote } from "@/lib/supabase/api";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { useAnonymousSession } from "@/hooks/useAnonymousSession";
+import { useUserSession } from "@/hooks/useUserSession";
 import type { AnsweredQuestion, Category, Question, UserProfile } from "@/types/question";
 
 export type Screen = "intro" | "question" | "result" | "discovery" | "signup" | "share";
@@ -41,7 +41,7 @@ export interface DiscoveryData {
 }
 
 export function useUnsayFlow() {
-  const session = useAnonymousSession();
+  const session = useUserSession();
   const persistenceEnabled = isSupabaseConfigured;
 
   const [screen, setScreen] = useState<Screen>("intro");
@@ -252,6 +252,8 @@ export function useUnsayFlow() {
       discovery,
       shareQuestion,
       shareSlug,
+      isAnonymous: session.isAnonymous,
+      email: session.email,
       start,
       submitAnswer,
       continueFromResult,
@@ -269,6 +271,8 @@ export function useUnsayFlow() {
       discovery,
       shareQuestion,
       shareSlug,
+      session.isAnonymous,
+      session.email,
       start,
       submitAnswer,
       continueFromResult,

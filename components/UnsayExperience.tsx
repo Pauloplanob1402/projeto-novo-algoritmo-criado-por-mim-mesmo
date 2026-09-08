@@ -23,7 +23,7 @@ export function UnsayExperience() {
     <div className="w-full max-w-[460px] min-h-screen sm:min-h-0 sm:max-h-[900px] sm:h-[calc(100vh-64px)] bg-bg relative flex flex-col overflow-hidden sm:rounded-[36px] sm:border sm:border-border sm:shadow-[0_0_80px_rgba(139,107,255,0.18),0_40px_100px_rgba(0,0,0,0.55)]">
       <Header
         visible={headerVisible}
-        profileEnabled={flow.answeredCount > 0}
+        profileEnabled={headerVisible}
         onOpenProfile={() => setDrawerOpen(true)}
       />
 
@@ -44,9 +44,7 @@ export function UnsayExperience() {
           <InsightCard discovery={flow.discovery} onContinue={flow.dismissDiscovery} />
         )}
 
-        {flow.screen === "signup" && (
-          <SignupPrompt onGoogle={flow.skipSignup} onEmail={flow.skipSignup} onSkip={flow.skipSignup} />
-        )}
+        {flow.screen === "signup" && <SignupPrompt onSkip={flow.skipSignup} />}
 
         {flow.screen === "share" && flow.shareQuestion && (
           <ShareCard question={flow.shareQuestion} slug={flow.shareSlug} onBack={flow.backFromShare} />
@@ -57,6 +55,8 @@ export function UnsayExperience() {
         open={drawerOpen}
         profile={flow.profile}
         answeredCount={flow.answeredCount}
+        isAnonymous={flow.isAnonymous}
+        email={flow.email}
         onClose={() => setDrawerOpen(false)}
       />
     </div>

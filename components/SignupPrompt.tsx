@@ -1,10 +1,10 @@
+import { AccountActions } from "@/components/AccountActions";
+
 interface SignupPromptProps {
-  onGoogle: () => void;
-  onEmail: () => void;
   onSkip: () => void;
 }
 
-export function SignupPrompt({ onGoogle, onEmail, onSkip }: SignupPromptProps) {
+export function SignupPrompt({ onSkip }: SignupPromptProps) {
   return (
     <div className="flex flex-col items-center justify-center text-center flex-1 pt-2">
       <div className="w-[52px] h-[52px] rounded-full unsay-gradient-soft border border-border-hi flex items-center justify-center mb-6">
@@ -20,20 +20,7 @@ export function SignupPrompt({ onGoogle, onEmail, onSkip }: SignupPromptProps) {
       </p>
 
       <div className="flex flex-col gap-2.5 w-full mt-8">
-        <button
-          type="button"
-          onClick={onGoogle}
-          className="border border-border-hi text-text-dim font-bold text-[15px] tracking-wide rounded-full py-[17px] w-full active:scale-[0.97] transition-transform"
-        >
-          Continuar com Google
-        </button>
-        <button
-          type="button"
-          onClick={onEmail}
-          className="border border-border-hi text-text-dim font-bold text-[15px] tracking-wide rounded-full py-[17px] w-full active:scale-[0.97] transition-transform"
-        >
-          Continuar com e-mail
-        </button>
+        <AccountActions />
         <button
           type="button"
           onClick={onSkip}

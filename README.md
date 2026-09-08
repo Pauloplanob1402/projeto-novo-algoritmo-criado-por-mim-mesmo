@@ -1,11 +1,11 @@
-# UNSAY — Etapas 1 e 2
+# UNSAY — Etapas 1, 2 e 3
 
-**Etapa 1 (Experiência & Frontend)** e **Etapa 2 (Supabase)** concluídas.
-Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 + Supabase.
+**Etapa 1 (Experiência & Frontend)**, **Etapa 2 (Supabase)** e **Etapa 3
+(Autenticação)** concluídas. Next.js 16 (App Router) + TypeScript +
+Tailwind CSS v4 + Supabase Auth.
 
-Ainda **sem autenticação real** (login com Google/e-mail é Etapa 3) e **sem
-Gemini** (Etapa 5) — o app usa sessão anônima do Supabase Auth para já
-persistir dados reais desde já, sem exigir cadastro.
+Ainda **sem Gemini** (Etapa 5) — os insights continuam gerados por
+template local, só que agora já persistidos no banco.
 
 ## Como rodar
 
@@ -45,6 +45,38 @@ automaticamente no comportamento da Etapa 1 (tudo simulado em memória).
 Isso é proposital: dá pra fazer o deploy a qualquer momento, com ou sem o
 banco configurado ainda.
 
+## Configurando a autenticação (Etapa 3)
+
+1. Em **Authentication → Providers → Google**, habilite e cole o **Client
+   ID** e **Client Secret** de um projeto OAuth no Google Cloud Console
+   (tela de consentimento + credencial "Web application"). A URI de
+   redirect a autorizar no Google é a que o próprio painel do Supabase
+   mostra ali (algo como `https://xxxx.supabase.co/auth/v1/callback`).
+2. Em **Authentication → URL Configuration**, defina o **Site URL** como
+   o domínio de produção (ex.: `https://unsay.vercel.app`) e adicione as
+   URLs de preview/local em **Redirect URLs**. É pra lá que o Google e o
+   link de e-mail redirecionam de volta.
+3. Login por e-mail é **passwordless** (magic link) — decisão
+   deliberada: elimina o fluxo inteiro de "esqueci minha senha" do
+   briefing original, porque não existe senha para esquecer. O próprio
+   link por e-mail já cumpre esse papel toda vez que a pessoa precisa
+   entrar de novo.
+4. **A conta anônima "vira" a conta de verdade**: quem já respondeu
+   perguntas sem cadastro e faz login depois (Google ou e-mail) continua
+   com o mesmo `user_id` — nada do histórico se perde. Isso usa
+   `linkIdentity` (Google) e `updateUser({ email })` (e-mail), os
+   métodos oficiais do Supabase Auth pra converter uma sessão anônima.
+5. Login/logout ficam sempre acessíveis no painel de perfil (ícone no
+   canto superior direito, a qualquer momento) — não só na tela de
+   cadastro que aparece depois de 7 respostas.
+
+**Limitação conhecida:** como o login com Google recarrega a página (é um
+redirect de verdade para o Google e de volta), a posição do usuário
+dentro do fluxo de perguntas é reiniciada visualmente após o login — mas
+os dados já respondidos continuam salvos no banco, sob o mesmo usuário.
+Retomar exatamente de onde parou é uma melhoria futura, fora do escopo
+desta etapa (evitando overengineering agora).
+
 ## Deploy (GitHub + Vercel)
 
 1. Suba esta pasta como repositório no GitHub (`.gitignore` já exclui
@@ -75,10 +107,11 @@ lib/
     api.ts                        # helpers fetch (com fallback null em caso de falha)
 
 hooks/
-  useAnonymousSession.ts     # garante login anônimo real via Supabase Auth
-  useUnsayFlow.ts              # máquina de estado — tenta persistir real, cai pro local
+  useUserSession.ts             # sessão (anônima ou logada) + escuta onAuthStateChange
+  useUnsayFlow.ts                 # máquina de estado — tenta persistir real, cai pro local
 
 components/  (ver comentários em cada arquivo)
+  AccountActions.tsx               # botões de login (Google + e-mail), usados na tela de cadastro e no perfil
 
 supabase/migrations/0001_init.sql   # schema completo + RLS + função agregada
 scripts/seed-questions.ts             # popula as 100 perguntas (idempotente)
@@ -95,11 +128,11 @@ scripts/seed-questions.ts             # popula as 100 perguntas (idempotente)
 | Criação de link de compartilhamento (slug) | **Real** — `/api/shares` grava no banco |
 | Resolução pública do link (`/q/[slug]`) | Ainda não — é escopo da Etapa 6 |
 | Geração do texto do insight | Ainda por template local — vira Gemini na Etapa 5 (a tabela `insights` já existe e já persiste) |
-| Login de verdade (trocar o anônimo por conta) | Etapa 3 |
+| Login com Google e e-mail (magic link) | **Real** — via Supabase Auth, convertendo a sessão anônima existente |
+| Logout | **Real** — sempre acessível no painel de perfil |
 
 ## Próxima etapa
 
-Etapa 3 — Autenticação: login com Google e e-mail via Supabase Auth,
-ligando a identidade real à sessão anônima já existente
-(`supabase.auth.linkIdentity`), sem perder o histórico de respostas de
-quem já usou o app sem conta.
+Etapa 4 — Algoritmo: ligar `lib/algorithm.ts` a estatísticas reais de uso
+(performance histórica por pergunta, taxa de resposta, taxa de
+compartilhamento), em vez dos pesos fixos atuais.
