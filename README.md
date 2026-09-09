@@ -1,11 +1,9 @@
-# UNSAY — Etapas 1, 2, 3 e 4
+# UNSAY — Etapas 1 a 5
 
 **Etapa 1 (Experiência & Frontend)**, **Etapa 2 (Supabase)**, **Etapa 3
-(Autenticação)** e **Etapa 4 (Algoritmo)** concluídas. Next.js 16 (App
-Router) + TypeScript + Tailwind CSS v4 + Supabase Auth.
-
-Ainda **sem Gemini** (Etapa 5) — os insights continuam gerados por
-template local, só que agora já persistidos no banco.
+(Autenticação)**, **Etapa 4 (Algoritmo)** e **Etapa 5 (Gemini)**
+concluídas. Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 +
+Supabase Auth + Gemini.
 
 ## Como rodar
 
@@ -77,6 +75,36 @@ os dados já respondidos continuam salvos no banco, sob o mesmo usuário.
 Retomar exatamente de onde parou é uma melhoria futura, fora do escopo
 desta etapa (evitando overengineering agora).
 
+## Configurando o Gemini (Etapa 5)
+
+1. Gere uma chave em https://aistudio.google.com/apikey.
+2. Configure `GEMINI_API_KEY` no Vercel (Project Settings → Environment
+   Variables). Nunca vai pro `NEXT_PUBLIC_*` — é lida só em
+   `app/api/ai/insight/route.ts`, no servidor.
+3. Opcionalmente, `GEMINI_MODEL` troca o modelo usado (padrão:
+   `gemini-2.0-flash` — rápido e barato, adequado pra uma frase curta por
+   vez; ajuste se o nome do modelo mudar no Google AI Studio).
+4. **Sem a chave configurada**, a rota funciona normalmente e devolve o
+   texto gerado localmente por `lib/insights.ts` (o mesmo comportamento
+   da Etapa 1) — nunca quebra, nunca deixa a pessoa sem descoberta.
+
+**Como funciona:** `lib/gemini.ts` chama o Gemini só nos momentos de alto
+valor já definidos (`INSIGHT_MILESTONES` em `lib/insights.ts`, ou quando
+uma contradição nova é detectada) — nunca a cada resposta, seguindo o
+"controle de custo" do briefing. O prompt do sistema proíbe
+explicitamente diagnóstico, termos clínicos ou afirmações absolutas de
+personalidade — só linguagem probabilística ("suas respostas sugerem...",
+"pode haver uma contradição..."). Cada chamada:
+
+1. calcula um fallback local instantaneamente (`generateInsight`, mesma
+   lógica de templates da Etapa 1);
+2. tenta o Gemini com um resumo estruturado (perfil 0–100 por dimensão +
+   últimas respostas como contexto, nunca o histórico bruto inteiro);
+3. se o Gemini falhar, não responder a tempo (timeout de 6s) ou não
+   estiver configurado, usa o fallback sem a pessoa perceber diferença;
+4. persiste o resultado final na tabela `insights`, já existente desde a
+   Etapa 2.
+
 ## Deploy (GitHub + Vercel)
 
 1. Suba esta pasta como repositório no GitHub (`.gitignore` já exclui
@@ -93,14 +121,14 @@ app/
   api/
     _lib/auth.ts          # valida o token do usuário nas rotas
     answers/route.ts       # grava resposta + atualiza perfil + percentual real
-    insights/route.ts       # persiste um insight (texto ainda gerado localmente)
     shares/route.ts          # cria o registro de compartilhamento (slug)
     questions/stats/route.ts  # estatísticas agregadas por pergunta (Etapa 4), público
+    ai/insight/route.ts        # gera o insight via Gemini (com fallback) e persiste (Etapa 5)
 
 types/question.ts, data/questions.ts   # domínio e as 100 perguntas seedadas
 
 lib/
-  algorithm.ts, profile.ts, insights.ts, stats.ts, labels.ts
+  algorithm.ts, profile.ts, insights.ts, stats.ts, labels.ts, gemini.ts
   supabase/
     config.ts               # detecta se o Supabase está configurado
     browserClient.ts          # client do navegador — import() dinâmico (code-splitting)
@@ -129,7 +157,7 @@ scripts/seed-questions.ts             # popula as 100 perguntas (idempotente)
 | Percentual de comparação social | **Real** (contagem via `get_answer_percent`), cai pro determinístico local se a rede falhar |
 | Criação de link de compartilhamento (slug) | **Real** — `/api/shares` grava no banco |
 | Resolução pública do link (`/q/[slug]`) | Ainda não — é escopo da Etapa 6 |
-| Geração do texto do insight | Ainda por template local — vira Gemini na Etapa 5 (a tabela `insights` já existe e já persiste) |
+| Geração do texto do insight | **Real** — Gemini server-side, com fallback local automático (chave ausente ou chamada falha) |
 | Login com Google e e-mail (magic link) | **Real** — via Supabase Auth, convertendo a sessão anônima existente |
 | Logout | **Real** — sempre acessível no painel de perfil |
 | Algoritmo de próxima pergunta | **Real** — combina os atributos autorais das perguntas com uso real (taxa de compartilhamento observada + bônus de exploração para perguntas pouco vistas) |
@@ -181,6 +209,8 @@ termos de produto:
 
 ## Próxima etapa
 
-Etapa 5 — Gemini: endpoint `/api/ai/insight` server-side, chave só no
-servidor, geração real de insights/contradições, com cache e fallback
-quando o Gemini estiver indisponível.
+Etapa 6 — Viralidade: página pública `/q/[slug]` que resolve o link
+compartilhado (a tabela `shares` e a criação do slug já existem desde a
+Etapa 2), deep links, tracking de referral, fluxo "responda primeiro,
+cadastre-se depois" para quem chega por um convite, comparação entre
+amigos.

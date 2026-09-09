@@ -4,15 +4,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QUESTIONS } from "@/data/questions";
 import { pickNextQuestion, type QuestionStatsMap } from "@/lib/algorithm";
 import { generateInsight, INSIGHT_MILESTONES } from "@/lib/insights";
+import { CATEGORY_LABELS } from "@/lib/labels";
 import {
   DIMENSION_LABELS,
   INITIAL_PROFILE,
   applyAnswerToProfile,
   checkForNewContradiction,
+  topDimensions,
   type Contradiction,
 } from "@/lib/profile";
 import { seededPercent } from "@/lib/stats";
-import { createShareRemote, fetchQuestionStats, persistInsightRemote, submitAnswerRemote } from "@/lib/supabase/api";
+import {
+  createShareRemote,
+  fetchQuestionStats,
+  generateInsightRemote,
+  submitAnswerRemote,
+} from "@/lib/supabase/api";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useUserSession } from "@/hooks/useUserSession";
 import type { AnsweredQuestion, Category, Question, UserProfile } from "@/types/question";
@@ -20,6 +27,7 @@ import type { AnsweredQuestion, Category, Question, UserProfile } from "@/types/
 export type Screen = "intro" | "question" | "result" | "discovery" | "signup" | "share";
 
 const SIGNUP_AFTER = 7;
+const RECENT_ANSWERS_FOR_CONTEXT = 5;
 
 export interface ResultData {
   question: Question;
@@ -38,6 +46,18 @@ export interface DiscoveryData {
   title: string;
   bodyHtml: string;
   detail: string;
+}
+
+function profileSummaryText(profile: UserProfile): string {
+  return Object.entries(profile)
+    .map(([dim, value]) => `${DIMENSION_LABELS[dim as keyof UserProfile]}: ${Math.round(value)}`)
+    .join(", ");
+}
+
+function recentAnswersText(answered: AnsweredQuestion[]): string[] {
+  return answered
+    .slice(-RECENT_ANSWERS_FOR_CONTEXT)
+    .map((a) => `${CATEGORY_LABELS[a.category]}: ${a.answerText}`);
 }
 
 export function useUnsayFlow() {
@@ -89,42 +109,72 @@ export function useUnsayFlow() {
     setScreen("question");
   }, []);
 
-  const renderContradiction = useCallback((contradiction: Contradiction) => {
-    setDiscovery({
-      kind: "contradiction",
-      kicker: "POSSÍVEL CONTRADIÇÃO",
-      title: "Encontramos uma possível contradição.",
-      bodyHtml: `Você parece valorizar <strong>${DIMENSION_LABELS[contradiction.a]}</strong> e <strong>${
-        DIMENSION_LABELS[contradiction.b]
-      }</strong> ao mesmo tempo — duas coisas que, nas suas próprias respostas, geralmente pedem escolhas opostas.`,
-      detail:
-        "Não significa que você está errado. Só que, em momentos diferentes, suas respostas pedem coisas diferentes de você — e isso é mais comum do que parece.",
-    });
-    setScreen("discovery");
-  }, []);
+  const renderContradiction = useCallback(
+    async (contradiction: Contradiction, currentProfile: UserProfile, currentAnswered: AnsweredQuestion[]) => {
+      const dimensionsToMention = [DIMENSION_LABELS[contradiction.a], DIMENSION_LABELS[contradiction.b]];
+      const localFallback = `Você parece valorizar <strong>${dimensionsToMention[0]}</strong> e <strong>${dimensionsToMention[1]}</strong> ao mesmo tempo — duas coisas que, nas suas próprias respostas, geralmente pedem escolhas opostas.`;
+
+      let bodyHtml = localFallback;
+
+      if (persistenceEnabled && session.accessToken) {
+        const remote = await generateInsightRemote(session.accessToken, {
+          kind: "contradiction",
+          profileSummary: profileSummaryText(currentProfile),
+          dimensionsToMention,
+          recentAnswers: recentAnswersText(currentAnswered),
+          fallback: localFallback,
+        });
+        if (remote?.content) bodyHtml = remote.content;
+      }
+
+      setDiscovery({
+        kind: "contradiction",
+        kicker: "POSSÍVEL CONTRADIÇÃO",
+        title: "Encontramos uma possível contradição.",
+        bodyHtml,
+        detail:
+          "Não significa que você está errado. Só que, em momentos diferentes, suas respostas pedem coisas diferentes de você — e isso é mais comum do que parece.",
+      });
+      setScreen("discovery");
+    },
+    [persistenceEnabled, session.accessToken]
+  );
 
   const renderDiscovery = useCallback(
-    (nextProfile: UserProfile, answeredCount: number) => {
-      const bodyHtml = generateInsight(nextProfile, insightsShown.current);
+    async (nextProfile: UserProfile, currentAnswered: AnsweredQuestion[]) => {
+      const localFallback = generateInsight(nextProfile, insightsShown.current);
       insightsShown.current += 1;
+
+      let bodyHtml = localFallback;
+
+      if (persistenceEnabled && session.accessToken) {
+        const topDims = topDimensions(nextProfile, 2).map(([dim]) => DIMENSION_LABELS[dim]);
+        const remote = await generateInsightRemote(session.accessToken, {
+          kind: "pattern",
+          profileSummary: profileSummaryText(nextProfile),
+          dimensionsToMention: topDims,
+          recentAnswers: recentAnswersText(currentAnswered),
+          fallback: localFallback,
+        });
+        if (remote?.content) bodyHtml = remote.content;
+      }
+
       setDiscovery({
         kind: "pattern",
         kicker: "ENCONTRAMOS UM PADRÃO",
         title: "Suas respostas começam a formar um padrão.",
         bodyHtml,
-        detail: `Isso é calculado a partir de ${answeredCount} respostas, comparando as categorias que mexem mais com você (ego, comparação e potencial de contradição) com as que você evita.`,
+        detail: `Isso é calculado a partir de ${currentAnswered.length} respostas, comparando as categorias que mexem mais com você (ego, comparação e potencial de contradição) com as que você evita.`,
       });
       setScreen("discovery");
-
-      if (persistenceEnabled && session.accessToken) {
-        persistInsightRemote(session.accessToken, "pattern", bodyHtml);
-      }
     },
     [persistenceEnabled, session.accessToken]
   );
 
   const advanceFlow = useCallback(
-    (nextProfile: UserProfile, answeredCount: number) => {
+    async (nextProfile: UserProfile, currentAnswered: AnsweredQuestion[]) => {
+      const answeredCount = currentAnswered.length;
+
       if (!signupShown.current && answeredCount >= SIGNUP_AFTER) {
         signupShown.current = true;
         setScreen("signup");
@@ -135,13 +185,13 @@ export function useUnsayFlow() {
         const contradiction = pendingContradiction.current;
         pendingContradiction.current = null;
         contradictionsFound.current.push(contradiction.key);
-        renderContradiction(contradiction);
+        await renderContradiction(contradiction, nextProfile, currentAnswered);
         return;
       }
 
       if (INSIGHT_MILESTONES.includes(answeredCount) && !shownMilestones.current.has(answeredCount)) {
         shownMilestones.current.add(answeredCount);
-        renderDiscovery(nextProfile, answeredCount);
+        await renderDiscovery(nextProfile, currentAnswered);
         return;
       }
 
@@ -224,16 +274,16 @@ export function useUnsayFlow() {
   );
 
   const continueFromResult = useCallback(() => {
-    advanceFlow(profile, answered.length);
-  }, [advanceFlow, profile, answered.length]);
+    advanceFlow(profile, answered);
+  }, [advanceFlow, profile, answered]);
 
   const start = useCallback(() => {
     goToNextQuestion();
   }, [goToNextQuestion]);
 
   const skipSignup = useCallback(() => {
-    advanceFlow(profile, answered.length);
-  }, [advanceFlow, profile, answered.length]);
+    advanceFlow(profile, answered);
+  }, [advanceFlow, profile, answered]);
 
   const dismissDiscovery = useCallback(() => {
     goToNextQuestion();
@@ -254,8 +304,8 @@ export function useUnsayFlow() {
   }, [persistenceEnabled, session.accessToken]);
 
   const backFromShare = useCallback(() => {
-    advanceFlow(profile, answered.length);
-  }, [advanceFlow, profile, answered.length]);
+    advanceFlow(profile, answered);
+  }, [advanceFlow, profile, answered]);
 
   const answeredCount = answered.length;
 

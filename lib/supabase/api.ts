@@ -36,12 +36,21 @@ export function submitAnswerRemote(
   return postJson<SubmitAnswerResult>("/api/answers", accessToken, { question, optionIndex, answerText });
 }
 
-export function persistInsightRemote(
+export function generateInsightRemote(
   accessToken: string,
-  type: "pattern" | "contradiction",
-  content: string
+  payload: {
+    kind: "pattern" | "contradiction";
+    profileSummary: string;
+    dimensionsToMention: string[];
+    recentAnswers: string[];
+    fallback: string;
+  }
 ) {
-  return postJson<{ id: string }>("/api/insights", accessToken, { type, content });
+  return postJson<{ content: string; source: "gemini" | "fallback" }>(
+    "/api/ai/insight",
+    accessToken,
+    payload
+  );
 }
 
 export function createShareRemote(accessToken: string, questionId: number, platform?: string) {
