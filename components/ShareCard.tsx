@@ -11,30 +11,48 @@ interface ShareCardProps {
 
 export function ShareCard({ question, slug, onBack }: ShareCardProps) {
   const [copied, setCopied] = useState(false);
-  const [localFallback] = useState(
-    () => `${question.id.toString(36)}${Math.random().toString(36).slice(2, 6)}`
-  );
+  const [sent, setSent] = useState(false);
 
-  const displayLink = `unsay.app/q/${slug ?? localFallback}`;
+  // Enquanto o slug real (gravado no banco) ainda não voltou da API, mostra
+  // um placeholder — o link de verdade só existe depois que /api/shares
+  // responde, então evita copiar/enviar algo que não resolve ainda.
+  const path = slug ? `/q/${slug}` : null;
+  const fullUrl = path && typeof window !== "undefined" ? `${window.location.origin}${path}` : null;
+  const displayLink =
+    path && typeof window !== "undefined" ? `${window.location.host}${path}` : "gerando link...";
 
   const copyLink = async () => {
+    if (!fullUrl) return;
     try {
-      await navigator.clipboard.writeText(`https://${displayLink}`);
+      await navigator.clipboard.writeText(fullUrl);
     } catch {
-      // clipboard indisponível (ex.: contexto não seguro) — ignora silenciosamente no demo
+      // clipboard indisponível (ex.: contexto não seguro) — ignora silenciosamente
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
 
-  const [sent, setSent] = useState(false);
-  const sendToFriend = () => {
+  const sendToFriend = async () => {
+    if (!fullUrl) return;
+
+    // Web Share API: abre o menu nativo de compartilhamento no celular
+    // (WhatsApp, Mensagens, etc.) quando disponível.
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ text: question.text, url: fullUrl });
+        return;
+      } catch {
+        // pessoa cancelou o share nativo — cai pro fallback de copiar
+      }
+    }
+
+    await copyLink();
     setSent(true);
     setTimeout(() => setSent(false), 1800);
   };
 
   return (
-    <div className="flex flex-col justify-center flex-1 pt-2 relative">
+    <div className="flex flex-col flex-1 pt-2 relative">
       <div className="text-text-faint text-[13px] font-bold tracking-wide mb-2.5">COMPARTILHAR</div>
       <p className="font-serif text-2xl font-medium leading-[1.3] mb-[22px]">
         Quero saber como você responderia.
@@ -53,7 +71,8 @@ export function ShareCard({ question, slug, onBack }: ShareCardProps) {
           <button
             type="button"
             onClick={copyLink}
-            className="shrink-0 bg-text text-bg text-[12.5px] font-extrabold px-4 py-2.5 rounded-full"
+            disabled={!fullUrl}
+            className="shrink-0 bg-text text-bg text-[12.5px] font-extrabold px-4 py-2.5 rounded-full disabled:opacity-50"
           >
             Copiar
           </button>
@@ -64,7 +83,8 @@ export function ShareCard({ question, slug, onBack }: ShareCardProps) {
         <button
           type="button"
           onClick={sendToFriend}
-          className="unsay-gradient text-bg font-bold text-[15px] tracking-wide rounded-full py-[17px] w-full shadow-[0_14px_30px_-8px_rgba(196,90,190,0.55)] active:scale-[0.97] transition-transform"
+          disabled={!fullUrl}
+          className="unsay-gradient text-bg font-bold text-[15px] tracking-wide rounded-full py-[17px] w-full shadow-[0_14px_30px_-8px_rgba(196,90,190,0.55)] active:scale-[0.97] transition-transform disabled:opacity-50"
         >
           ENVIAR PARA UM AMIGO
         </button>
@@ -78,7 +98,7 @@ export function ShareCard({ question, slug, onBack }: ShareCardProps) {
       </div>
 
       <Toast show={copied} message="Link copiado" />
-      <Toast show={sent} message="Convite enviado (simulado)" />
+      <Toast show={sent} message="Convite enviado" />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Question } from "@/types/question";
 
 interface AnswerOptionsProps {
-  question: Question;
+  question: Pick<Question, "type" | "options">;
   onAnswer: (optionIndex: number, answerText: string) => void;
 }
 

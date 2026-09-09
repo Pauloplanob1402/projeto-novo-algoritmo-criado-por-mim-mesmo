@@ -24,7 +24,7 @@ export function ResultCard({ result, onShare, onContinue }: ResultCardProps) {
   const leftLabel = isOpenEnded ? "Únicas" : answerText;
 
   return (
-    <div className="flex flex-col justify-center flex-1 pt-2">
+    <div className="flex flex-col flex-1 pt-2">
       <div className="text-text-faint text-[13px] font-bold tracking-wide mb-2.5">SUA RESPOSTA</div>
       <p className="font-serif text-2xl font-medium leading-[1.3] mb-[34px]">
         Você escolheu <span className="unsay-gradient-text">{answerText}</span>.

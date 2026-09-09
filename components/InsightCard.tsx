@@ -13,7 +13,7 @@ export function InsightCard({ discovery, onContinue }: InsightCardProps) {
   const [showDetail, setShowDetail] = useState(false);
 
   return (
-    <div className="flex flex-col justify-center flex-1 pt-2">
+    <div className="flex flex-col flex-1 pt-2">
       <div className="mb-[22px]">
         <Logo size={30} gradientId="unsay-insight" />
       </div>

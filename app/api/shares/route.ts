@@ -3,6 +3,8 @@ import { authenticateRequest } from "@/app/api/_lib/auth";
 
 interface ShareRequestBody {
   questionId: number;
+  optionIndex?: number;
+  answerText?: string;
   platform?: string;
 }
 
@@ -11,11 +13,10 @@ function generateSlug(): string {
 }
 
 /**
- * Cria o registro do compartilhamento e devolve um slug único. A página
- * pública /q/[slug] que resolve esse link para quem recebe (Tela 7 do
- * briefing, fluxo "responda primeiro, cadastre-se depois") é escopo da
- * Etapa 6 — aqui só garantimos que o convite já fica registrado de
- * verdade no banco desde já.
+ * Cria o registro do compartilhamento e devolve um slug único. Guarda um
+ * retrato da resposta de quem está compartilhando (option_index/answer_text)
+ * para a página pública /q/[slug] (Etapa 6) mostrar "seu amigo respondeu X"
+ * sem precisar de acesso à tabela de respostas de ninguém.
  */
 export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
@@ -31,9 +32,14 @@ export async function POST(request: NextRequest) {
 
   let slug = generateSlug();
   for (let attempt = 0; attempt < 3; attempt++) {
-    const { error } = await supabase
-      .from("shares")
-      .insert({ user_id: userId, question_id: body.questionId, slug, platform: body.platform ?? null });
+    const { error } = await supabase.from("shares").insert({
+      user_id: userId,
+      question_id: body.questionId,
+      slug,
+      platform: body.platform ?? null,
+      sender_option_index: body.optionIndex ?? null,
+      sender_answer_text: body.answerText ?? null,
+    });
 
     if (!error) {
       return NextResponse.json({ slug });

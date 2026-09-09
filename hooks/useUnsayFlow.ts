@@ -80,6 +80,7 @@ export function useUnsayFlow() {
   const shownMilestones = useRef<Set<number>>(new Set());
   const signupShown = useRef<boolean>(false);
   const pendingShareQuestion = useRef<Question | null>(null);
+  const pendingShareAnswer = useRef<{ optionIndex: number; answerText: string } | null>(null);
   const pendingContradiction = useRef<Contradiction | null>(null);
   const questionStats = useRef<QuestionStatsMap>(new Map());
 
@@ -257,6 +258,7 @@ export function useUnsayFlow() {
       const isOpenEnded = question.type === "open";
 
       pendingShareQuestion.current = question.shareability >= 7 ? question : null;
+      pendingShareAnswer.current = question.shareability >= 7 ? { optionIndex, answerText } : null;
 
       setResult({
         question,
@@ -291,13 +293,14 @@ export function useUnsayFlow() {
 
   const openShare = useCallback(() => {
     const question = pendingShareQuestion.current;
-    if (!question) return;
+    const answer = pendingShareAnswer.current;
+    if (!question || !answer) return;
     setShareQuestion(question);
     setShareSlug(null);
     setScreen("share");
 
     if (persistenceEnabled && session.accessToken) {
-      createShareRemote(session.accessToken, question.id).then((remote) => {
+      createShareRemote(session.accessToken, question.id, answer).then((remote) => {
         if (remote) setShareSlug(remote.slug);
       });
     }

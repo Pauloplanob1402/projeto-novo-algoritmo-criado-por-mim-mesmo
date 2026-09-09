@@ -6,7 +6,7 @@ interface IntroScreenProps {
 
 export function IntroScreen({ onStart }: IntroScreenProps) {
   return (
-    <div className="flex flex-col items-center justify-center text-center flex-1 pt-8">
+    <div className="flex flex-col items-center text-center w-full my-auto pt-8">
       <div className="mb-[34px] drop-shadow-[0_10px_30px_rgba(139,107,255,0.35)]">
         <Logo size={64} gradientId="unsay-intro" />
       </div>

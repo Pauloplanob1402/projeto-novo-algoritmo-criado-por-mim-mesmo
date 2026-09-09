@@ -1,6 +1,9 @@
 import type { Contradiction } from "@/lib/profile";
 import type { QuestionStats, QuestionStatsMap } from "@/lib/algorithm";
+import type { ResolvedShare } from "@/lib/supabase/shareResolver";
 import type { Question, UserProfile } from "@/types/question";
+
+export type { ResolvedShare };
 
 interface SubmitAnswerResult {
   profile: UserProfile;
@@ -53,8 +56,35 @@ export function generateInsightRemote(
   );
 }
 
-export function createShareRemote(accessToken: string, questionId: number, platform?: string) {
-  return postJson<{ slug: string }>("/api/shares", accessToken, { questionId, platform });
+export function createShareRemote(
+  accessToken: string,
+  questionId: number,
+  answer: { optionIndex: number; answerText: string },
+  platform?: string
+) {
+  return postJson<{ slug: string }>("/api/shares", accessToken, {
+    questionId,
+    optionIndex: answer.optionIndex,
+    answerText: answer.answerText,
+    platform,
+  });
+}
+
+/** Resolve publicamente um link /q/[slug] — sem autenticação. */
+export async function resolveShareRemote(slug: string): Promise<ResolvedShare | null> {
+  try {
+    const res = await fetch(`/api/shares/${slug}`);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { share: ResolvedShare };
+    return body.share;
+  } catch {
+    return null;
+  }
+}
+
+/** Registra que a sessão atual chegou via um link compartilhado. */
+export function recordReferralRemote(accessToken: string, slug: string) {
+  return postJson<{ recorded: boolean }>("/api/referrals", accessToken, { slug });
 }
 
 interface RawQuestionStatsRow {

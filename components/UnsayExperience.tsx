@@ -29,7 +29,7 @@ export function UnsayExperience() {
 
       {showProgress && <ProgressIndicator answeredCount={flow.answeredCount} />}
 
-      <div className="relative flex-1 flex px-[26px] pb-[calc(30px+env(safe-area-inset-bottom))]">
+      <div className="relative flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain px-[26px] pb-[calc(30px+env(safe-area-inset-bottom))]">
         {flow.screen === "intro" && <IntroScreen onStart={flow.start} />}
 
         {flow.screen === "question" && flow.currentQuestion && (
