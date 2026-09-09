@@ -87,8 +87,6 @@ export default function PrivacyPage() {
         </section>
 
         <p className="text-text-faint text-[13px] pt-6 border-t border-border">
-          Este texto é um ponto de partida e não substitui orientação jurídica. Recomendamos revisão
-          por um advogado antes do lançamento público, especialmente para conformidade com a LGPD.
         </p>
       </div>
     </div>
