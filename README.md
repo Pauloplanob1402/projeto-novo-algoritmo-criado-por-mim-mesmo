@@ -1,9 +1,12 @@
-# UNSAY — Etapas 1 a 6
+# UNSAY — Produto completo (Etapas 1 a 7)
 
-**Etapa 1 (Experiência & Frontend)**, **Etapa 2 (Supabase)**, **Etapa 3
-(Autenticação)**, **Etapa 4 (Algoritmo)**, **Etapa 5 (Gemini)** e
-**Etapa 6 (Viralidade)** concluídas. Next.js 16 (App Router) + TypeScript
-+ Tailwind CSS v4 + Supabase Auth + Gemini.
+Todas as 7 etapas do briefing original concluídas. Next.js 16 (App
+Router) + TypeScript + Tailwind CSS v4 + Supabase Auth + Gemini,
+implantável no Vercel a partir de um repositório GitHub.
+
+**Resumo por etapa:** 1 — Experiência & Frontend · 2 — Supabase · 3 —
+Autenticação · 4 — Algoritmo · 5 — Gemini · 6 — Viralidade · 7 —
+Produção (esta).
 
 ## Como rodar
 
@@ -117,7 +120,9 @@ personalidade — só linguagem probabilística ("suas respostas sugerem...",
 
 ```
 app/
-  layout.tsx, page.tsx, globals.css
+  layout.tsx, page.tsx, globals.css, error.tsx, global-error.tsx
+  manifest.ts, robots.ts, sitemap.ts, icon.svg, apple-icon.png
+  privacidade/page.tsx                # política de privacidade
   q/[slug]/page.tsx, not-found.tsx   # página pública de pergunta compartilhada (Etapa 6)
   api/
     _lib/auth.ts          # valida o token do usuário nas rotas
@@ -127,18 +132,21 @@ app/
     referrals/route.ts           # credita quem enviou o convite (Etapa 6)
     questions/stats/route.ts       # estatísticas agregadas por pergunta (Etapa 4), público
     ai/insight/route.ts              # gera o insight via Gemini (com fallback) e persiste (Etapa 5)
+    account/delete/route.ts            # exclusão de conta (Etapa 7)
 
 types/question.ts, data/questions.ts   # domínio e as 100 perguntas seedadas
 
 lib/
   algorithm.ts, profile.ts, insights.ts, stats.ts, labels.ts, gemini.ts
+  rateLimit.ts, sanitize.ts             # Etapa 7
   supabase/
     config.ts               # detecta se o Supabase está configurado
     browserClient.ts          # client do navegador — import() dinâmico (code-splitting)
     serverClient.ts             # clients server-side (autenticado e anônimo)
-    shareResolver.ts              # resolve um slug server-side (usado pela página e pela API)
-    authActions.ts                  # login Google/e-mail, logout
-    api.ts                            # helpers fetch (com fallback null em caso de falha)
+    adminClient.ts                # service role — só para exclusão de conta (Etapa 7)
+    shareResolver.ts                # resolve um slug server-side (usado pela página e pela API)
+    authActions.ts                    # login Google/e-mail, logout
+    api.ts                              # helpers fetch (com fallback null em caso de falha)
 
 hooks/
   useUserSession.ts             # sessão (anônima ou logada) + escuta onAuthStateChange
@@ -168,6 +176,9 @@ scripts/seed-questions.ts             # popula as 100 perguntas (idempotente)
 | Logout | **Real** — sempre acessível no painel de perfil |
 | Algoritmo de próxima pergunta | **Real** — combina os atributos autorais das perguntas com uso real (taxa de compartilhamento observada + bônus de exploração para perguntas pouco vistas) |
 | Tracking de referral | **Real** — `record_referral()`, deduplicado por (remetente, destinatário, pergunta) |
+| Rate limiting nas rotas custosas/sensíveis | **Real** — baseado em contagem no Supabase |
+| Exclusão de conta | **Real** — cascata completa, sempre sobre o próprio usuário autenticado |
+| PWA instalável, SEO básico, analytics | **Real** — manifest, robots, sitemap, ícones reais, Vercel Analytics |
 
 ## Etapa 4 — Algoritmo aprendendo com uso real
 
@@ -225,6 +236,89 @@ barreira de cadastro antes de responder.
   pergunta) quando o link é colado em redes sociais/WhatsApp.
 - Link expirado ou inexistente cai numa página 404 com a mesma
   identidade visual do resto do produto, não a página genérica do Next.
+
+## Etapa 7 — Produção
+
+### SEO & PWA
+- `app/manifest.ts`, `app/robots.ts`, `app/sitemap.ts` (convenções nativas
+  do Next — sem arquivos estáticos manuais).
+- Ícones reais gerados a partir do símbolo oficial do UNSAY (não mais um
+  placeholder): `app/icon.svg` (favicon), `app/apple-icon.png` (180×180,
+  fundo sólido — iOS não lida bem com transparência), `public/icon-192.png`,
+  `public/icon-512.png` e uma versão `maskable` (com margem de segurança
+  para o SO recortar em círculo/squircle).
+- `metadataBase`, Open Graph e Twitter Card configurados no layout raiz —
+  defina `NEXT_PUBLIC_SITE_URL` (ver `.env.example`) para os links
+  absolutos ficarem corretos.
+- `appleWebApp` configurado para abrir em modo standalone quando
+  adicionado à tela de início no iOS.
+
+### Analytics
+`@vercel/analytics` + `@vercel/speed-insights` — oficiais da Vercel,
+zero-config, ativam sozinhos no primeiro deploy (não precisam de conta
+nem chave extra).
+
+### Tratamento de erros
+`app/error.tsx` (erro de qualquer página, com a identidade visual do
+produto) e `app/global-error.tsx` (fallback para quando o próprio layout
+raiz falha — intencionalmente simples, sem depender de nada que possa
+estar quebrado). Ambos com botão "Tentar de novo".
+
+### Segurança
+`next.config.ts` define headers padrão em toda rota:
+`X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+`Permissions-Policy` (bloqueando câmera/microfone/geolocalização, que o
+produto não usa). **Não incluí uma Content-Security-Policy estrita** —
+o app depende de domínios externos (Google Fonts, Supabase, o redirect
+do login Google) e uma CSP mal calibrada quebraria login ou fontes sem eu
+poder testar contra um projeto Supabase real. Se quiser endurecer isso
+depois, configure uma CSP com o domínio de produção em mãos e teste o
+fluxo de login inteiro antes de subir.
+
+### Rate limiting
+`lib/rateLimit.ts` — baseado em contagem no próprio Supabase (não em
+memória do processo, que não funciona de forma confiável em serverless).
+Aplicado em:
+- `/api/ai/insight` (o Gemini, a única chamada que custa dinheiro de
+  verdade por uso): no máximo 20 gerações/hora por pessoa — se exceder,
+  cai automaticamente no fallback local, sem erro visível;
+- `/api/shares`: no máximo 50 links/hora por pessoa;
+- `/api/answers`: no máximo 300 respostas/hora por pessoa.
+
+Isso é a segunda camada da mesma regra de "controle de custo" do
+briefing — a primeira camada (só chamar o Gemini nos marcos certos) já
+existe desde a Etapa 5 no cliente, mas um cliente adulterado poderia
+chamar a rota direto. Essa proteção é no servidor, não dá pra burlar.
+
+### Moderação básica
+`lib/sanitize.ts` remove tags HTML e limita o tamanho de qualquer texto
+livre enviado pela pessoa (as perguntas do tipo "open") antes de
+persistir — nunca confie só na validação do cliente.
+
+### Política de privacidade
+`/privacidade` — texto real (não um placeholder), cobrindo o que é
+coletado, como é usado, quais terceiros estão envolvidos (Supabase,
+Gemini), e como excluir a conta. **Isto não é aconselhamento jurídico** —
+recomendo revisão por um advogado antes do lançamento público,
+especialmente para conformidade com a LGPD.
+
+### Exclusão de conta
+Botão real no painel de perfil ("Excluir conta e todos os dados",
+confirmação em dois toques). Usa `SUPABASE_SERVICE_ROLE_KEY` — a partir
+desta etapa, **essa chave precisa estar configurada no Vercel também**
+(antes só era usada localmente pelo seed; ver `.env.example`). A exclusão
+sempre age sobre o próprio usuário autenticado (nunca um id vindo do
+corpo da requisição) e, por causa do `on delete cascade` desenhado desde
+a Etapa 2, apaga em cascata respostas, perfil, insights, contradições,
+compartilhamentos e referrals — sem deixar rastro.
+
+### Custos (resumo do que já protege isso, etapa por etapa)
+- Gemini só é chamado nos marcos de resposta, nunca por clique (Etapa 5)
+  + rate limit no servidor (Etapa 7);
+- `/api/questions/stats` tem cache de 1 minuto (Etapa 4);
+- índices em todas as colunas mais consultadas desde a Etapa 2;
+- `@supabase/supabase-js` carregado sob demanda, não no bundle inicial
+  (Etapa 4/passada de performance).
 
 ## Performance & mobile
 

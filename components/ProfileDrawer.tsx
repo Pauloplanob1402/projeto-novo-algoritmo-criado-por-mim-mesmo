@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AccountActions } from "@/components/AccountActions";
 import { DIMENSION_LABELS } from "@/lib/profile";
 import { signOutAndReset } from "@/lib/supabase/authActions";
+import { deleteAccountRemote } from "@/lib/supabase/api";
 import type { ProfileDimension, UserProfile } from "@/types/question";
 
 const DIMENSION_ORDER: ProfileDimension[] = [
@@ -21,6 +23,7 @@ interface ProfileDrawerProps {
   answeredCount: number;
   isAnonymous: boolean;
   email: string | null;
+  accessToken: string | null;
   onClose: () => void;
 }
 
@@ -30,6 +33,7 @@ export function ProfileDrawer({
   answeredCount,
   isAnonymous,
   email,
+  accessToken,
   onClose,
 }: ProfileDrawerProps) {
   return (
@@ -85,12 +89,57 @@ export function ProfileDrawer({
           )}
         </div>
 
+        <DeleteAccountSection accessToken={accessToken} />
+
         <div className="mt-5 pt-5 border-t border-border text-[12.5px] text-text-faint leading-[1.6]">
           Isso é um retrato provisório, não um diagnóstico. Ele muda conforme você responde mais
-          perguntas.
+          perguntas. <Link href="/privacidade" className="underline text-text-dim">Política de privacidade</Link>.
         </div>
       </div>
     </>
+  );
+}
+
+function DeleteAccountSection({ accessToken }: { accessToken: string | null }) {
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  if (!accessToken) return null;
+
+  const handleClick = async () => {
+    if (!confirming) {
+      setConfirming(true);
+      setTimeout(() => setConfirming(false), 4000); // some se a pessoa não confirmar
+      return;
+    }
+    setDeleting(true);
+    const result = await deleteAccountRemote(accessToken);
+    if (result?.deleted) {
+      // navegação de página inteira (não client-side) — precisamos que
+      // TODA a sessão/estado seja descartado, igual ao signOutAndReset.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = "/";
+    } else {
+      setDeleting(false);
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="mt-5 pt-5 border-t border-border">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={deleting}
+        className={`w-full text-center text-[13px] font-semibold py-2.5 rounded-full border transition-colors ${
+          confirming
+            ? "border-pink text-pink"
+            : "border-transparent text-text-faint hover:text-text-dim"
+        }`}
+      >
+        {deleting ? "Excluindo..." : confirming ? "Toque de novo para confirmar" : "Excluir conta e todos os dados"}
+      </button>
+    </div>
   );
 }
 

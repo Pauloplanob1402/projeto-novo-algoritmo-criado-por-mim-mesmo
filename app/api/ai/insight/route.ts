@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/api/_lib/auth";
 import { generateInsightText, isGeminiConfigured } from "@/lib/gemini";
+import { isRateLimited } from "@/lib/rateLimit";
 
 interface InsightRequestBody {
   kind: "pattern" | "contradiction";
@@ -18,7 +19,10 @@ interface InsightRequestBody {
  *
  * Chamado só nos marcos definidos em lib/insights.ts (INSIGHT_MILESTONES)
  * ou quando uma contradição nova é detectada — nunca a cada resposta, ver
- * "controle de custo" no briefing do produto.
+ * "controle de custo" no briefing do produto. O rate limit abaixo é a
+ * segunda camada dessa mesma regra: protege contra alguém chamando essa
+ * rota diretamente (sem passar pela UI), já que é a única do produto que
+ * custa dinheiro de verdade por chamada.
  */
 export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
@@ -30,6 +34,12 @@ export async function POST(request: NextRequest) {
   const body = (await request.json()) as InsightRequestBody;
   if (!body?.kind || !body?.fallback) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  // no máximo 20 chamadas ao Gemini por hora por pessoa — bem acima do
+  // uso orgânico (os marcos naturais do produto geram bem menos que isso)
+  if (await isRateLimited(supabase, "insights", "user_id", userId, 60, 20)) {
+    return NextResponse.json({ content: body.fallback, source: "fallback" as const });
   }
 
   let content = body.fallback;

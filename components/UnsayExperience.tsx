@@ -57,6 +57,7 @@ export function UnsayExperience() {
         answeredCount={flow.answeredCount}
         isAnonymous={flow.isAnonymous}
         email={flow.email}
+        accessToken={flow.accessToken}
         onClose={() => setDrawerOpen(false)}
       />
     </div>

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/api/_lib/auth";
+import { isRateLimited } from "@/lib/rateLimit";
+import { sanitizeUserText } from "@/lib/sanitize";
 
 interface ShareRequestBody {
   questionId: number;
@@ -30,6 +32,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
+  // no máximo 50 links criados por hora por pessoa — trava geração
+  // automatizada de slugs sem incomodar uso real
+  if (await isRateLimited(supabase, "shares", "user_id", userId, 60, 50)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
+  const sanitizedAnswerText = body.answerText ? sanitizeUserText(body.answerText, 200) : null;
+
   let slug = generateSlug();
   for (let attempt = 0; attempt < 3; attempt++) {
     const { error } = await supabase.from("shares").insert({
@@ -38,7 +48,7 @@ export async function POST(request: NextRequest) {
       slug,
       platform: body.platform ?? null,
       sender_option_index: body.optionIndex ?? null,
-      sender_answer_text: body.answerText ?? null,
+      sender_answer_text: sanitizedAnswerText,
     });
 
     if (!error) {

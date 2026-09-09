@@ -1,9 +1,34 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const TITLE = "UNSAY — Você não sabe tudo sobre você";
+const DESCRIPTION = "Responda. Compare. Descubra.";
+
 export const metadata: Metadata = {
-  title: "UNSAY — Você não sabe tudo sobre você",
-  description: "Responda. Compare. Descubra.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: TITLE, template: "%s — UNSAY" },
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    siteName: "UNSAY",
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "UNSAY",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
@@ -30,7 +55,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full flex items-center justify-center sm:py-8">{children}</body>
+      <body className="min-h-full flex items-center justify-center sm:py-8">
+        {children}
+        <Analytics />
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

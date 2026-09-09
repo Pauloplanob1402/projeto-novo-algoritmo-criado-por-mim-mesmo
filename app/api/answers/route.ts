@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/api/_lib/auth";
+import { isRateLimited } from "@/lib/rateLimit";
 import { applyAnswerToProfile, checkForNewContradiction, INITIAL_PROFILE } from "@/lib/profile";
+import { sanitizeUserText } from "@/lib/sanitize";
 import type { ProfileDimension, Question, UserProfile } from "@/types/question";
 
 interface AnswerRequestBody {
@@ -44,10 +46,17 @@ export async function POST(request: NextRequest) {
   const { supabase, userId } = auth;
 
   const body = (await request.json()) as AnswerRequestBody;
-  const { question, optionIndex, answerText } = body;
+  const { question, optionIndex } = body;
+  const answerText = sanitizeUserText(body.answerText ?? "", 200);
 
-  if (!question?.id || typeof optionIndex !== "number") {
+  if (!question?.id || typeof optionIndex !== "number" || !answerText) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  // no máximo 300 respostas por hora por pessoa — bem acima de qualquer
+  // uso real (o banco tem só 100 perguntas), só pra travar automação/abuso
+  if (await isRateLimited(supabase, "answers", "user_id", userId, 60, 300)) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   // 1) grava a resposta (upsert: responder de novo a mesma pergunta atualiza)

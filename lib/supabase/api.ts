@@ -87,6 +87,11 @@ export function recordReferralRemote(accessToken: string, slug: string) {
   return postJson<{ recorded: boolean }>("/api/referrals", accessToken, { slug });
 }
 
+/** Exclui a conta atual e todos os dados associados (irreversível). */
+export function deleteAccountRemote(accessToken: string) {
+  return postJson<{ deleted: boolean }>("/api/account/delete", accessToken, {});
+}
+
 interface RawQuestionStatsRow {
   question_id: number;
   times_answered: number;
