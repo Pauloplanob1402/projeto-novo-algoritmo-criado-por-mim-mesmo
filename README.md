@@ -70,13 +70,13 @@ banco configurado ainda.
 5. Login/logout ficam sempre acessíveis no painel de perfil (ícone no
    canto superior direito, a qualquer momento) — não só na tela de
    cadastro que aparece depois de 7 respostas.
-
-**Limitação conhecida:** como o login com Google recarrega a página (é um
-redirect de verdade para o Google e de volta), a posição do usuário
-dentro do fluxo de perguntas é reiniciada visualmente após o login — mas
-os dados já respondidos continuam salvos no banco, sob o mesmo usuário.
-Retomar exatamente de onde parou é uma melhoria futura, fora do escopo
-desta etapa (evitando overengineering agora).
+6. **Retomada de sessão**: como login com Google recarrega a página de
+   verdade, `/api/session/resume` (Etapa 7) devolve o perfil e o
+   histórico de respostas do usuário assim que a sessão está pronta — se
+   a pessoa já tinha respondido algo antes (típico logo após um login),
+   o app pula a tela de intro e continua de onde parou, em vez de
+   recomeçar visualmente. Só a posição na experiência precisava de
+   sincronização — os dados em si já estavam salvos desde a Etapa 2.
 
 ## Configurando o Gemini (Etapa 5)
 
@@ -133,6 +133,7 @@ app/
     questions/stats/route.ts       # estatísticas agregadas por pergunta (Etapa 4), público
     ai/insight/route.ts              # gera o insight via Gemini (com fallback) e persiste (Etapa 5)
     account/delete/route.ts            # exclusão de conta (Etapa 7)
+    session/resume/route.ts              # retoma perfil + histórico de respostas (pós-login)
 
 types/question.ts, data/questions.ts   # domínio e as 100 perguntas seedadas
 

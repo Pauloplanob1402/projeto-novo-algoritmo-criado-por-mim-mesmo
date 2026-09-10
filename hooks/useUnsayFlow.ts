@@ -17,6 +17,7 @@ import { seededPercent } from "@/lib/stats";
 import {
   createShareRemote,
   fetchQuestionStats,
+  fetchResumeState,
   generateInsightRemote,
   submitAnswerRemote,
 } from "@/lib/supabase/api";
@@ -109,6 +110,48 @@ export function useUnsayFlow() {
     setCurrentQuestion(question);
     setScreen("question");
   }, []);
+
+  // Referência sempre atualizada da tela atual — usada dentro do efeito de
+  // retomada abaixo pra não avançar automaticamente se a pessoa já tiver
+  // clicado em "COMEÇAR" manualmente antes da busca terminar.
+  const screenRef = useRef(screen);
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+
+  const resumeAttempted = useRef(false);
+
+  // Se a pessoa já respondeu perguntas antes (ex.: acabou de fazer login,
+  // o que recarrega a página), retoma de onde parou em vez de voltar pra
+  // tela inicial — a única coisa perdida é a posição visual, nunca o
+  // progresso de verdade, que já estava salvo no banco desde a Etapa 2.
+  useEffect(() => {
+    if (!persistenceEnabled || !session.accessToken || resumeAttempted.current) return;
+    resumeAttempted.current = true;
+
+    fetchResumeState(session.accessToken).then((resumed) => {
+      if (!resumed || resumed.answered.length === 0) return;
+
+      setProfile(resumed.profile);
+      setAnswered(resumed.answered);
+
+      seenIds.current = new Set(resumed.answered.map((a) => a.id));
+      recentCategories.current = resumed.answered.map((a) => a.category);
+      shownMilestones.current = new Set(
+        INSIGHT_MILESTONES.filter((m) => m <= resumed.answered.length)
+      );
+      insightsShown.current = shownMilestones.current.size;
+      signupShown.current = resumed.answered.length >= SIGNUP_AFTER;
+
+      // só pula pra próxima pergunta automaticamente se a pessoa ainda
+      // estiver parada na tela de intro — se ela já começou a responder
+      // manualmente antes da busca terminar, não interrompe o que já
+      // estava fazendo.
+      if (screenRef.current === "intro") {
+        goToNextQuestion();
+      }
+    });
+  }, [persistenceEnabled, session.accessToken, goToNextQuestion]);
 
   const renderContradiction = useCallback(
     async (contradiction: Contradiction, currentProfile: UserProfile, currentAnswered: AnsweredQuestion[]) => {

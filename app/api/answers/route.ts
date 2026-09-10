@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/api/_lib/auth";
 import { isRateLimited } from "@/lib/rateLimit";
-import { applyAnswerToProfile, checkForNewContradiction, INITIAL_PROFILE } from "@/lib/profile";
+import {
+  applyAnswerToProfile,
+  checkForNewContradiction,
+  profileRowToProfile,
+  profileToRow,
+} from "@/lib/profile";
 import { sanitizeUserText } from "@/lib/sanitize";
-import type { ProfileDimension, Question, UserProfile } from "@/types/question";
+import type { Question } from "@/types/question";
 
 interface AnswerRequestBody {
   question: Pick<Question, "id" | "dims" | "category" | "type" | "options">;
@@ -11,32 +16,6 @@ interface AnswerRequestBody {
   answerText: string;
 }
 
-const PROFILE_COLUMNS: Record<ProfileDimension, string> = {
-  freedom: "freedom_score",
-  security: "security_score",
-  money: "money_score",
-  relationships: "relationship_score",
-  status: "status_score",
-  risk: "risk_score",
-  moral: "moral_score",
-};
-
-function rowToProfile(row: Record<string, number> | null): UserProfile {
-  if (!row) return { ...INITIAL_PROFILE };
-  const profile = { ...INITIAL_PROFILE };
-  for (const [dim, column] of Object.entries(PROFILE_COLUMNS) as [ProfileDimension, string][]) {
-    if (typeof row[column] === "number") profile[dim] = row[column];
-  }
-  return profile;
-}
-
-function profileToRow(profile: UserProfile) {
-  const row: Record<string, number> = {};
-  for (const [dim, column] of Object.entries(PROFILE_COLUMNS) as [ProfileDimension, string][]) {
-    row[column] = Math.round(profile[dim]);
-  }
-  return row;
-}
 
 export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
@@ -79,7 +58,7 @@ export async function POST(request: NextRequest) {
     .eq("user_id", userId)
     .maybeSingle();
 
-  const currentProfile = rowToProfile(profileRow);
+  const currentProfile = profileRowToProfile(profileRow);
   const nextProfile = applyAnswerToProfile(currentProfile, { dims: question.dims }, optionIndex);
 
   const { error: profileError } = await supabase

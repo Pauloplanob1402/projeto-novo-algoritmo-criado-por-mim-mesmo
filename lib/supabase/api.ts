@@ -1,7 +1,7 @@
 import type { Contradiction } from "@/lib/profile";
 import type { QuestionStats, QuestionStatsMap } from "@/lib/algorithm";
 import type { ResolvedShare } from "@/lib/supabase/shareResolver";
-import type { Question, UserProfile } from "@/types/question";
+import type { AnsweredQuestion, Question, UserProfile } from "@/types/question";
 
 export type { ResolvedShare };
 
@@ -90,6 +90,24 @@ export function recordReferralRemote(accessToken: string, slug: string) {
 /** Exclui a conta atual e todos os dados associados (irreversível). */
 export function deleteAccountRemote(accessToken: string) {
   return postJson<{ deleted: boolean }>("/api/account/delete", accessToken, {});
+}
+
+/**
+ * Busca o perfil e o histórico de respostas do usuário para retomar a
+ * sessão de onde parou (ex.: depois de um login que recarrega a página).
+ */
+export async function fetchResumeState(
+  accessToken: string
+): Promise<{ profile: UserProfile; answered: AnsweredQuestion[] } | null> {
+  try {
+    const res = await fetch("/api/session/resume", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { profile: UserProfile; answered: AnsweredQuestion[] };
+  } catch {
+    return null;
+  }
 }
 
 interface RawQuestionStatsRow {

@@ -24,6 +24,38 @@ const MIN_VALUE = 4;
 const MAX_VALUE = 96;
 
 /**
+ * Mapeamento entre as dimensões do perfil (usadas no código) e as colunas
+ * reais da tabela user_profiles no Supabase. Compartilhado entre as rotas
+ * que leem/gravam o perfil (answers, session/resume).
+ */
+export const PROFILE_COLUMNS: Record<ProfileDimension, string> = {
+  freedom: "freedom_score",
+  security: "security_score",
+  money: "money_score",
+  relationships: "relationship_score",
+  status: "status_score",
+  risk: "risk_score",
+  moral: "moral_score",
+};
+
+export function profileRowToProfile(row: Record<string, number> | null): UserProfile {
+  if (!row) return { ...INITIAL_PROFILE };
+  const profile = { ...INITIAL_PROFILE };
+  for (const [dim, column] of Object.entries(PROFILE_COLUMNS) as [ProfileDimension, string][]) {
+    if (typeof row[column] === "number") profile[dim] = row[column];
+  }
+  return profile;
+}
+
+export function profileToRow(profile: UserProfile): Record<string, number> {
+  const row: Record<string, number> = {};
+  for (const [dim, column] of Object.entries(PROFILE_COLUMNS) as [ProfileDimension, string][]) {
+    row[column] = Math.round(profile[dim]);
+  }
+  return row;
+}
+
+/**
  * Atualiza o vetor de perfil do usuário a partir de uma resposta.
  * Isso é calculado por regra simples (sem IA) a cada resposta, como
  * previsto na ETAPA 4 — a IA (Gemini) só interpreta o resultado agregado,
