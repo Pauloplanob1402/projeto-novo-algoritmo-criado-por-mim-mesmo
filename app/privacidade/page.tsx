@@ -83,12 +83,10 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-serif text-xl text-text mb-2">7. Contato</h2>
-          <p>Dúvidas sobre esta política podem ser enviadas para o e-mail de suporte do produto.</p>
+          <p>Dúvidas sobre esta política podem ser enviadas para o e-mail de suporte do produto: planob1402@gmail.com .</p>
         </section>
 
         <p className="text-text-faint text-[13px] pt-6 border-t border-border">
-          Este texto é um ponto de partida e não substitui orientação jurídica. Recomendamos revisão
-          por um advogado antes do lançamento público, especialmente para conformidade com a LGPD.
         </p>
       </div>
     </div>
